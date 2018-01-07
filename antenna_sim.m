@@ -1,21 +1,17 @@
-clear;
-
-display_geom = 0;
-run_sim = 1;
+function antenna_sim(display_geom, run_sim)
 
 physical_constants;
-
-suffix = "channel7";
-f_0 = 6.4896e9; % center frequency of the channel
-f_c = 0.4992e9 / 0.3925;
 
 Sim_Path = 'tmp';
 Sim_CSX = 'uwb.xml';
 
+f_0 = 6.4896e9;
+f_c = 0.4992e9 / 0.3925;
+
 lambda0 = C0/f_0;
 
 helix_radius = lambda0/(2*pi);
-helix_top_radius = 0.5*helix_radius;
+taper_ratio = 0.5;
 helix_turns = 1.1;
 helix_pitch = lambda0*.23;
 feed_height = 1e-3;
@@ -25,8 +21,8 @@ feed_R = 50;
 
 ang = linspace(0,2*pi*helix_turns,200*helix_turns);
 
-helix_points(1,:) = helix_radius*cos(ang) .* (1-ang/(2*pi*helix_turns)) + helix_top_radius*cos(ang) .* ang/(2*pi*helix_turns);
-helix_points(2,:) = helix_radius*sin(ang) .* (1-ang/(2*pi*helix_turns)) + helix_top_radius*sin(ang) .* ang/(2*pi*helix_turns);
+helix_points(1,:) = helix_radius*(1 - taper_ratio*ang/(2*pi*helix_turns)).*cos(ang);
+helix_points(2,:) = helix_radius*(1 - taper_ratio*ang/(2*pi*helix_turns)).*sin(ang);
 helix_points(3,:) = ang/2/pi*helix_pitch + feed_height;
 
 mesh_res = C0 / (f_0 + f_c) / 10;
@@ -51,12 +47,12 @@ CSX = AddWire(CSX, 'Helix', 2, helix_points, 3.22e-4);
 %  CSX = AddWire(CSX, 'Helix', 2, fin3_points, 3.22e-4);
 %  CSX = AddWire(CSX, 'Helix', 2, fin4_points, 3.22e-4);
 
-CSX = AddMaterial(CSX, 'Structure');
-CSX = SetMaterialProperty(CSX, 'Structure', 'Epsilon', 3);
-CSX = AddCylindricalShell(CSX,'Structure',0,[0 0 0],[0 0 feed_height+helix_turns*helix_pitch+1e-3],(helix_radius+helix_top_radius)/2,helix_radius-helix_top_radius);
+%  CSX = AddMaterial(CSX, 'Structure');
+%  CSX = SetMaterialProperty(CSX, 'Structure', 'Epsilon', 3);
+%  CSX = AddCylindricalShell(CSX,'Structure',0,[0 0 0],[0 0 feed_height+helix_turns*helix_pitch+1e-3],(helix_radius+helix_top_radius)/2,helix_radius-helix_top_radius);
 %  CSX = AddCylinder(CSX,'Structure',0,[0 0 0],[0 0 feed_height+helix_turns*helix_pitch+1e-3],helix_radius-0.4e-3);
 
-CSX = AddCylinder(CSX,'Structure',0,[0 0 feed_height+helix_turns*helix_pitch+1e-3],[0 0 feed_height+helix_turns*helix_pitch+2e-3], 3.5e-2);
+%  CSX = AddCylinder(CSX,'Structure',0,[0 0 feed_height+helix_turns*helix_pitch+1e-3],[0 0 feed_height+helix_turns*helix_pitch+2e-3], 3.5e-2);
 %  %  CSX = AddCylinder(CSX,'Structure',0,[0 0 0],[0 0 feed_height+helix_turns*helix_pitch+1e-3], 2e-3);
 %  %  CSX = AddCylinder(CSX,'Structure',0,[0 0 feed_height+.5*helix_pitch],[-(helix_radius+1e-3) 0 feed_height+.5*helix_pitch], 2e-3);
 %  %  CSX = AddCylinder(CSX,'Structure',0,[0 0 feed_height+helix_pitch],[helix_radius+1e-3 0 feed_height+helix_pitch], 2e-3);
@@ -102,7 +98,7 @@ s11phase = unwrap(arg(s11));
 figure
 ax = plotyy( freq/1e6, 20*log10(abs(s11)), freq/1e6, s11phase);
 grid on
-title( ['reflection coefficient ', suffix, ' S_{11}']);
+title( ['reflection coefficient S_{11}']);
 xlabel( 'frequency f / MHz' );
 ylabel( ax(1), 'reflection coefficient |S_{11}|' );
 ylabel(ax(2), 'S_{11} phase (rad)');
@@ -127,6 +123,7 @@ for i = 1:numel(nf2ff.freq)
         hold on;
     end
 end
+drawnow;
 title(["gain ", suffix, " / dBi"]);
 
 % save the plots in order to compare them afer simulating the different channels
