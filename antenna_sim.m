@@ -45,7 +45,7 @@ CSX = AddCylinder(CSX,'Ground',1,[0 0 -ground_height],[0 0 0],ground_radius);
 
 CSX = AddMetal(CSX, 'Helix');
 CSX = AddCurve(CSX, 'Helix', 2, helix_points);
-CSX = AddWire(CSX, 'Helix', 2, helix_points, 3.22e-4);
+%  CSX = AddWire(CSX, 'Helix', 2, helix_points, 3.22e-4);
 %  CSX = AddWire(CSX, 'Helix', 2, taper1_points, 3.22e-4);
 %  CSX = AddWire(CSX, 'Helix', 2, taper2_points, 3.22e-4);
 %  CSX = AddWire(CSX, 'Helix', 2, taper3_points, 3.22e-4);
@@ -67,9 +67,9 @@ CSX = AddWire(CSX, 'Helix', 2, helix_points, 3.22e-4);
 
 [CSX port] = AddLumpedPort(CSX, 10, 1, feed_R, [helix_radius 0 0], [helix_radius 0 feed_height], [0 0 1], true);
 
-mesh.x = [-(2*lambda0+ground_radius) linspace(-helix_radius, helix_radius, 31) (2*lambda0+ground_radius)];
-mesh.y = [-(2*lambda0+ground_radius) linspace(-helix_radius, helix_radius, 31) (2*lambda0+ground_radius)];
-mesh.z = [-(2*lambda0+ground_height) 0 linspace(feed_height, feed_height+helix_turns*helix_pitch, 25) (2*lambda0+feed_height+helix_turns*helix_pitch)];
+mesh.x = [-(2*lambda0+ground_radius) linspace(-helix_radius, helix_radius, 21) (2*lambda0+ground_radius)];
+mesh.y = [-(2*lambda0+ground_radius) linspace(-helix_radius, helix_radius, 21) (2*lambda0+ground_radius)];
+mesh.z = [-(2*lambda0+ground_height) 0 linspace(feed_height, feed_height+helix_turns*helix_pitch, 17) (2*lambda0+feed_height+helix_turns*helix_pitch)];
 mesh = SmoothMesh(mesh, mesh_res/2);
 CSX = DefineRectGrid(CSX, 1, mesh);
 
@@ -77,9 +77,9 @@ start = [mesh.x(10)     mesh.y(10)     mesh.z(10)];
 stop  = [mesh.x(end-9) mesh.y(end-9) mesh.z(end-9)];
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
 
-FDTD = InitFDTD( 'NrTs', 30000, 'EndCriteria', 1e-5, 'OverSampling', 2);
+FDTD = InitFDTD( 'NrTs', 50000, 'EndCriteria', 1e-5, 'OverSampling', 2);
 FDTD = SetGaussExcite(FDTD, f_0, f_c );
-BC   = {'MUR' 'MUR' 'MUR' 'MUR' 'MUR' 'PML_8'};
+BC   = {'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8' 'PML_8'};
 FDTD = SetBoundaryCond(FDTD, BC);
 
 if (run_sim==1 || display_geom==1)
@@ -103,7 +103,16 @@ port = calcPort(port, Sim_Path, freq);
 max_s11 = max(20*log10(abs(port.uf.ref ./ port.uf.inc)));
 
 cost = max_s11;
-return;
+
+s11 = port.uf.ref ./ port.uf.inc;
+s11phase = unwrap(arg(s11));
+figure
+ax = plotyy( freq/1e6, 20*log10(abs(s11)), freq/1e6, s11phase);
+grid on
+title( ['reflection coefficient S_{11}']);
+xlabel( 'frequency f / MHz' );
+ylabel( ax(1), 'reflection coefficient |S_{11}|' );
+ylabel(ax(2), 'S_{11} phase (rad)');
 
 phi = [0] * pi / 180;
 theta = [-180:5:180] * pi / 180;

@@ -5,8 +5,11 @@ from math import *
 import tempfile
 
 def fun(p):
+    tmpdir = tempfile.mkdtemp()
+    print('evaluating objective function with p = %s (%s)' % (str(p),tmpdir))
     oc=oct2py.Oct2Py()
-    ret = oc.antenna_sim(p, tempfile.mkdtemp())
+    ret = oc.antenna_sim(p, tmpdir)
+    print('f(%s) = %f (%s)' % (str(p),ret,tmpdir))
     oc.exit()
     return ret
 
@@ -25,7 +28,7 @@ if __name__ == '__main__':
     bb.search(
         f=fun,  # given function
         box=bounds,  # range of values for each parameter
-        n=5,  # number of function calls on initial stage (global search)
-        m=5,  # number of function calls on subsequent stage (local search)
+        n=150,  # number of function calls on initial stage (global search)
+        m=50,  # number of function calls on subsequent stage (local search)
         batch=4,  # number of calls that will be evaluated in parallel
         resfile='output.csv') # text file where results will be saved

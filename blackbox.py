@@ -89,7 +89,7 @@ def search(f, box, n, m, batch, resfile,
 
     # initial sampling
     for i in range(n//batch):
-        with executor() as e:
+        with executor(processes=batch) as e:
             points[batch*i:batch*(i+1), -1] = list(e.map(f, list(map(cubetobox, points[batch*i:batch*(i+1), 0:-1]))))
 
     # normalizing function values
@@ -133,7 +133,7 @@ def search(f, box, n, m, batch, resfile,
                     break
             points[n+i*batch+j, 0:-1] = np.copy(minfit.x)
 
-        with executor() as e:
+        with executor(processes=batch) as e:
             points[n+batch*i:n+batch*(i+1), -1] = list(e.map(f, list(map(cubetobox, points[n+batch*i:n+batch*(i+1), 0:-1]))))/fmax
 
     # saving results into text file
