@@ -1,19 +1,26 @@
-function antenna_sim(display_geom, run_sim)
+function cost = antenna_sim(parameters, Sim_Path)
+
+display_geom = 0;
+run_sim = 1;
 
 physical_constants;
 
-Sim_Path = 'tmp';
 Sim_CSX = 'uwb.xml';
+
+fov = 90 * pi/180;
 
 f_0 = 6.4896e9;
 f_c = 0.4992e9 / 0.3925;
 
+helix_radius = parameters(1);
+helix_length = parameters(2);
+helix_pitch = parameters(3);
+taper_ratio = parameters(4);
+
+helix_turns = helix_length/helix_pitch;
+
 lambda0 = C0/f_0;
 
-helix_radius = lambda0/(2*pi);
-taper_ratio = 0.5;
-helix_turns = 1.1;
-helix_pitch = lambda0*.23;
 feed_height = 1e-3;
 ground_radius = 3e-2;
 ground_height = 0.5e-3;
@@ -90,18 +97,13 @@ if (run_sim==1 || display_geom==1)
     RunOpenEMS( Sim_Path, Sim_CSX);
 end
 
-freq  = linspace(f_0-f_c, f_0+f_c, 200);
+freq  = linspace(f_0-0.4992e9, f_0+0.4992e9, 200);
 port = calcPort(port, Sim_Path, freq);
 
-s11 = port.uf.ref ./ port.uf.inc;
-s11phase = unwrap(arg(s11));
-figure
-ax = plotyy( freq/1e6, 20*log10(abs(s11)), freq/1e6, s11phase);
-grid on
-title( ['reflection coefficient S_{11}']);
-xlabel( 'frequency f / MHz' );
-ylabel( ax(1), 'reflection coefficient |S_{11}|' );
-ylabel(ax(2), 'S_{11} phase (rad)');
+max_s11 = max(20*log10(abs(port.uf.ref ./ port.uf.inc)));
+
+cost = max_s11;
+return;
 
 phi = [0] * pi / 180;
 theta = [-180:5:180] * pi / 180;
