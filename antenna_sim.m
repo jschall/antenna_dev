@@ -1,6 +1,6 @@
 function cost = antenna_sim(parameters, Sim_Path)
 
-display_geom = 0;
+display_geom = 1;
 run_sim = 1;
 
 physical_constants;
@@ -12,25 +12,33 @@ fov = 90 * pi/180;
 f_0 = 6.4896e9;
 f_c = 0.4992e9 / 0.3925;
 
-helix_radius = parameters(1);
-helix_length = parameters(2);
-helix_pitch = parameters(3);
-taper_ratio = parameters(4);
+helix_radius = round(parameters(1)*1e6)/1e6;
+helix_length = round(parameters(2)*1e6)/1e6;
+helix_pitch2 = round(parameters(3)*1e6)/1e6;
+helix_pitch1 = round(parameters(4)*1e6)/1e6;
 
-helix_turns = helix_length/helix_pitch;
+helix_turns = 0.25*(4.0*helix_length - helix_pitch1 + helix_pitch2)/helix_pitch2;
+taper_ratio = 1;
 
 lambda0 = C0/f_0;
 
 feed_height = 1e-3;
+wire_radius = 5e-4;
 ground_radius = 3e-2;
-ground_height = 0.5e-3;
+ground_height = 1e-3;
 feed_R = 50;
 
-ang = linspace(0,2*pi*helix_turns,200*helix_turns);
+ang = linspace(0,pi/2,50);
 
-helix_points(1,:) = helix_radius*(1 - taper_ratio*ang/(2*pi*helix_turns)).*cos(ang);
-helix_points(2,:) = helix_radius*(1 - taper_ratio*ang/(2*pi*helix_turns)).*sin(ang);
-helix_points(3,:) = ang/2/pi*helix_pitch + feed_height;
+helix_points1(1,:) = helix_radius*cos(ang);
+helix_points1(2,:) = helix_radius*sin(ang);
+helix_points1(3,:) = feed_height + ang/2/pi*helix_pitch1;
+
+ang = linspace(pi/2,2*pi*(helix_turns-.25),200*(helix_turns-.25));
+
+helix_points2(1,:) = helix_radius*cos(ang);
+helix_points2(2,:) = helix_radius*sin(ang);
+helix_points2(3,:) = feed_height + .25*helix_pitch1 + (ang/2/pi-.25)*helix_pitch2;
 
 mesh_res = C0 / (f_0 + f_c) / 10;
 
@@ -38,21 +46,23 @@ CSX = InitCSX();
 CSX = AddMetal(CSX, 'Ground');
 CSX = AddCylinder(CSX,'Ground',1,[0 0 -ground_height],[0 0 0],ground_radius);
 
-
 %  CSX = AddMetal(CSX, 'MotorCup');
 %  CSX = AddCylinder(CSX,'MotorCup',0,[0 0 feed_height+helix_turns*helix_pitch+1e-3-3.1e-2],[0 0 feed_height+helix_turns*helix_pitch+1e-3-3e-2], 3.5e-2);
 %  CSX = AddCylindricalShell(CSX,'MotorCup',0,[0 0 feed_height+helix_turns*helix_pitch+1e-3-3e-2],[0 0 feed_height+helix_turns*helix_pitch+1e-3], 3.45e-2, 1e-3);
 
 CSX = AddMetal(CSX, 'Helix');
-CSX = AddCurve(CSX, 'Helix', 2, helix_points);
-%  CSX = AddWire(CSX, 'Helix', 2, helix_points, 3.22e-4);
-%  CSX = AddWire(CSX, 'Helix', 2, taper1_points, 3.22e-4);
-%  CSX = AddWire(CSX, 'Helix', 2, taper2_points, 3.22e-4);
-%  CSX = AddWire(CSX, 'Helix', 2, taper3_points, 3.22e-4);
-%  CSX = AddWire(CSX, 'Helix', 2, taper4_points, 3.22e-4);
-%  CSX = AddWire(CSX, 'Helix', 2, fin2_points, 3.22e-4);
-%  CSX = AddWire(CSX, 'Helix', 2, fin3_points, 3.22e-4);
-%  CSX = AddWire(CSX, 'Helix', 2, fin4_points, 3.22e-4);
+CSX = AddCurve(CSX, 'Helix', 1, helix_points1);
+CSX = AddWire(CSX, 'Helix', 1, helix_points1, wire_radius);
+CSX = AddCurve(CSX, 'Helix', 1, helix_points2);
+CSX = AddWire(CSX, 'Helix', 1, helix_points2, wire_radius);
+
+%  CSX = AddWire(CSX, 'Helix', 2, taper1_points, wire_radius);
+%  CSX = AddWire(CSX, 'Helix', 2, taper2_points, wire_radius);
+%  CSX = AddWire(CSX, 'Helix', 2, taper3_points, wire_radius);
+%  CSX = AddWire(CSX, 'Helix', 2, taper4_points, wire_radius);
+%  CSX = AddWire(CSX, 'Helix', 2, fin2_points, wire_radius);
+%  CSX = AddWire(CSX, 'Helix', 2, fin3_points, wire_radius);
+%  CSX = AddWire(CSX, 'Helix', 2, fin4_points, wire_radius);
 
 %  CSX = AddMaterial(CSX, 'Structure');
 %  CSX = SetMaterialProperty(CSX, 'Structure', 'Epsilon', 3);
@@ -65,16 +75,22 @@ CSX = AddCurve(CSX, 'Helix', 2, helix_points);
 %  %  CSX = AddCylinder(CSX,'Structure',0,[0 0 feed_height+helix_pitch],[helix_radius+1e-3 0 feed_height+helix_pitch], 2e-3);
 
 
-[CSX port] = AddLumpedPort(CSX, 10, 1, feed_R, [helix_radius 0 0], [helix_radius 0 feed_height], [0 0 1], true);
+[CSX port] = AddLumpedPort(CSX, 999, 1, feed_R, [helix_radius 0 0], [helix_radius 0 feed_height], [0 0 1], true);
 
-mesh.x = [-(2*lambda0+ground_radius) linspace(-helix_radius, helix_radius, 21) (2*lambda0+ground_radius)];
-mesh.y = [-(2*lambda0+ground_radius) linspace(-helix_radius, helix_radius, 21) (2*lambda0+ground_radius)];
-mesh.z = [-(2*lambda0+ground_height) 0 linspace(feed_height, feed_height+helix_turns*helix_pitch, 17) (2*lambda0+feed_height+helix_turns*helix_pitch)];
-mesh = SmoothMesh(mesh, mesh_res/2);
+if (taper_ratio > 1)
+    mesh.x = [-(2*lambda0+ground_radius) SmoothMeshLines2([-helix_radius*taper_ratio, -helix_radius, 0, helix_radius, helix_radius*taper_ratio], wire_radius) (2*lambda0+ground_radius)];
+else
+    mesh.x = [-(2*lambda0+ground_radius) SmoothMeshLines2([-helix_radius, 0, helix_radius], wire_radius) (2*lambda0+ground_radius)];
+end
+
+mesh.y = mesh.x;
+mesh.z = [-(2*lambda0+ground_height) -ground_height -ground_height/2 0 feed_height/2 SmoothMeshLines2([feed_height, feed_height+helix_length], wire_radius) (2*lambda0+feed_height+helix_length)];
+
+mesh = SmoothMesh(mesh, mesh_res);
 CSX = DefineRectGrid(CSX, 1, mesh);
 
-start = [mesh.x(10)     mesh.y(10)     mesh.z(10)];
-stop  = [mesh.x(end-9) mesh.y(end-9) mesh.z(end-9)];
+start = [mesh.x(11)     mesh.y(11)     mesh.z(11)];
+stop  = [mesh.x(end-10) mesh.y(end-10) mesh.z(end-10)];
 [CSX nf2ff] = CreateNF2FFBox(CSX, 'nf2ff', start, stop);
 
 FDTD = InitFDTD( 'NrTs', 50000, 'EndCriteria', 1e-5, 'OverSampling', 2);
@@ -97,16 +113,34 @@ if (run_sim==1 || display_geom==1)
     RunOpenEMS( Sim_Path, Sim_CSX);
 end
 
-freq  = linspace(f_0-0.4992e9, f_0+0.4992e9, 200);
+freq = linspace(f_0-0.4992e9, f_0+0.4992e9, 3);
+theta = linspace(-fov, fov, 3);
+phi = linspace(-fov, fov, 3);
+
 port = calcPort(port, Sim_Path, freq);
-
-max_s11 = max(20*log10(abs(port.uf.ref ./ port.uf.inc)));
-
-cost = max_s11;
+nf2ff = CalcNF2FF(nf2ff, Sim_Path, freq, theta, phi,'Mode',1);
 
 s11 = port.uf.ref ./ port.uf.inc;
+
+s11_db = 20*log10(abs(s11));
+
+vswr = (1+abs(s11)) ./ (1-abs(s11))
+max_vswr = max(vswr)
+
+rhcp_gain = 4*pi*(abs(nf2ff.E_cprh{2}).^2./abs(nf2ff.E_norm{2}).^2 .* nf2ff.P_rad{2}) ./ port.P_inc
+
+min_rhcp_gain = min(min(rhcp_gain))
+
+vswr_target = 2.5;
+
+cost = max([1, 1+(max_vswr-vswr_target)*10])/min_rhcp_gain
+return;
+
+
 s11phase = unwrap(arg(s11));
 figure
+
+
 ax = plotyy( freq/1e6, 20*log10(abs(s11)), freq/1e6, s11phase);
 grid on
 title( ['reflection coefficient S_{11}']);
@@ -121,7 +155,7 @@ theta = [-180:5:180] * pi / 180;
 
 figure
 plot(theta.' * 180/pi, delay*C0*1000);
-title(["delay ", suffix, " (mm)"]);
+title(["delay (mm)"]);
 
 figure
 plot(theta.' * 180/pi, fidelity)
@@ -135,7 +169,7 @@ for i = 1:numel(nf2ff.freq)
     end
 end
 drawnow;
-title(["gain ", suffix, " / dBi"]);
+title(["gain / dBi"]);
 
 % save the plots in order to compare them afer simulating the different channels
 %  print(1, ["s11_", suffix, ".png"]);
