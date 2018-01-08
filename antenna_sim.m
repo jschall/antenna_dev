@@ -1,6 +1,6 @@
 function cost = antenna_sim(parameters, Sim_Path)
 
-display_geom = 1;
+display_geom = 0;
 run_sim = 1;
 
 physical_constants;
