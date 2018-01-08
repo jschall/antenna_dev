@@ -88,8 +88,9 @@ def search(f, box, n, m, batch, resfile,
     points[:, 0:-1] = latin(n, d)
 
     # initial sampling
-    with executor(processes=2) as e:
-        points[:, -1] = list(e.map(f, list(map(cubetobox, points[:, 0:-1]))))
+    for i in range(n//batch):
+        with executor(processes=2) as e:
+            points[batch*i:batch*(i+1), -1] = list(e.map(f, list(map(cubetobox, points[batch*i:batch*(i+1), 0:-1]))))
 
     # normalizing function values
     fmax = max(abs(points[:, -1]))
