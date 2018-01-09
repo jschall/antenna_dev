@@ -31,13 +31,13 @@ feed_R = 50;
 ang = linspace(0,pi/2,50);
 helix_points1(1,:) = helix_radius*cos(ang);
 helix_points1(2,:) = helix_radius*sin(ang);
-helix_points1(3,:) = feed_height + ang/2/pi*helix_pitch1;
+helix_points1(3,:) = feed_height + ang/(2*pi)*helix_pitch1;
 
-ang = linspace(pi/2,2*pi*(helix_turns-.25),200*(helix_turns-.25));
+ang = linspace(pi/2,2*pi*helix_turns,200*(helix_turns-.25));
 
 helix_points2(1,:) = helix_radius*cos(ang);
 helix_points2(2,:) = helix_radius*sin(ang);
-helix_points2(3,:) = feed_height + .25*helix_pitch1 + (ang/2/pi-.25)*helix_pitch2;
+helix_points2(3,:) = feed_height + .25*helix_pitch1 + (ang/(2*pi)-.25)*helix_pitch2;
 
 mesh_res = C0 / (f_0 + f_c) / 10;
 
@@ -50,6 +50,12 @@ CSX = AddCurve(CSX, 'Helix', 1, helix_points1);
 CSX = AddWire(CSX, 'Helix', 1, helix_points1, wire_radius);
 CSX = AddCurve(CSX, 'Helix', 1, helix_points2);
 CSX = AddWire(CSX, 'Helix', 1, helix_points2, wire_radius);
+
+CSX = AddMaterial(CSX, 'Structure');
+CSX = SetMaterialProperty(CSX, 'Structure', 'Epsilon', 3);
+inside_radius = helix_radius-wire_radius-4e-4;
+outside_radius = helix_radius+wire_radius;
+CSX = AddCylindricalShell(CSX,'Structure',0,[0 0 0],[0 0 feed_height+helix_length], (inside_radius+outside_radius)/2, outside_radius-inside_radius);
 
 [CSX port] = AddLumpedPort(CSX, 999, 1, feed_R, [helix_radius 0 0], [helix_radius 0 feed_height], [0 0 1], true);
 
