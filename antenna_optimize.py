@@ -4,20 +4,60 @@ from math import *
 from dask.distributed import Client
 from contextlib import contextmanager
 
+def install(package):
+    import pip
+    pip.main(['install', package])
+
 def fun(p):
+    global mcode
+    try:
+        install('oct2py')
+    except:
+        pass
     import oct2py
     import tempfile
     import shutil
+    import os
+    fd, matfile = tempfile.mkstemp(suffix='.m')
+    with os.fdopen(fd, 'wb') as f:
+        f.write(mcode)
+        f.flush()
     tmpdir = tempfile.mkdtemp()
     print('evaluating objective function with p = %s' % (str(p),))
     oc=oct2py.Oct2Py()
-    ret = oc.antenna_sim(p, tmpdir)
-    print('f(%s) = %e' % (str(p),ret,))
-    oc.exit()
-    shutil.rmtree(tmpdir)
+    ret = oc.feval(matfile, p, tmpdir)
+    print('f(%s) = %f' % (str(p),ret,))
+
+    try:
+        oc.exit()
+    except:
+        pass
+
+    try:
+        f.close()
+    except:
+        pass
+
+    try:
+        os.close(fd)
+    except:
+        pass
+
+    try:
+        os.remove(matfile)
+    except:
+        pass
+
+    try:
+        shutil.rmtree(tmpdir)
+    except:
+        pass
     return ret
 
 if __name__ == '__main__':
+    with open('antenna_sim.m','rb') as f:
+        mcode = f.read()
+
     client = Client('tcp://10.1.10.78:8786')
 
     C0 = 299792458
@@ -25,10 +65,10 @@ if __name__ == '__main__':
     lambda0 = C0/f_0
 
     bounds = [
-        [.66*lambda0/(2*pi), 1.5*lambda0/(2*pi)], # radius
-        [1e-2, 2e-2], #length
-        [lambda0*.05, lambda0*.5], #pitch2
-        [0.,lambda0*.5] #pitch1
+        [6.0429e-03/1.15, 6.0429e-03*1.15], # radius
+        [1.0871e-02/1.15, 1.0871e-02*1.15], #length
+        [4.4621e-03/1.15, 4.4621e-03*1.15], #pitch2
+        [4.2901e-03/1.5, 4.2901e-03*1.5] #pitch1
         ]
 
     class Mapper:
@@ -44,8 +84,8 @@ if __name__ == '__main__':
     bb.search(
         f=fun,  # given function
         box=bounds,  # range of values for each parameter
-        n=600,  # number of function calls on initial stage (global search)
-        m=200,  # number of function calls on subsequent stage (local search)
+        n=80,  # number of function calls on initial stage (global search)
+        m=24,  # number of function calls on subsequent stage (local search)
         batch=8,  # number of calls that will be evaluated in parallel
         resfile='output.csv',  # text file where results will be saved
         executor = executor
